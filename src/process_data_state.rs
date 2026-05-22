@@ -1,10 +1,10 @@
 // process_data_state.rs
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use std::sync::mpsc::Sender;
-use std::io::{self, Read, Write};
 use crate::reactor::Reactor;
+use std::future::Future;
+use std::io::{self, Read, Write};
+use std::pin::Pin;
+use std::sync::mpsc::Sender;
+use std::task::{Context, Poll};
 
 pub struct AcceptConnection {
     // A raw pointer pointing directly back to our single Reactor instance
@@ -34,21 +34,31 @@ impl Future for AcceptConnection {
     }
 }
 
-pub async fn processData(reactor_ptr: *const Reactor, sender: Sender<std::task::Waker>) {
+fn give_res(mut stream: mio::net::TcpStream) {
+    println!("Step 3: Client connected! Processing HTTP payload...");
+
+    let mut buffer: [u8; 1024] = [0; 1024];
+    let _ = stream.read(&mut buffer);
+    println!(
+        "Frontend Request:\n{}",
+        String::from_utf8_lossy(&buffer[..150])
+    );
+
+    let response = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"status\": \"Success from DIY Async!\"}\n";
+    let _ = stream.write_all(response.as_bytes());
+    let _ = stream.flush();
+    println!("Step 4: Sent JSON packet to frontend successfully.");
+}
+
+pub async fn process_data(reactor_ptr: *const Reactor, sender: Sender<std::task::Waker>) {
     println!("Step 1: HTTP Backend Active. Awaiting browser request...");
-    
-    let connection_future = AcceptConnection { reactor_ptr, reactor_sender: sender };
-    
-    if let Ok(mut stream) = connection_future.await {
-        println!("Step 3: Client connected! Processing HTTP payload...");
 
-        let mut buffer = [0; 1024];
-        let _ = stream.read(&mut buffer);
-        println!("Frontend Request:\n{}", String::from_utf8_lossy(&buffer[..150]));
+    let connection_future = AcceptConnection {
+        reactor_ptr,
+        reactor_sender: sender,
+    };
 
-        let response = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"status\": \"Success from DIY Async!\"}\n";
-        let _ = stream.write_all(response.as_bytes());
-        let _ = stream.flush();
-        println!("Step 4: Sent JSON packet to frontend successfully.");
+    if let Ok(stream) = connection_future.await {
+        give_res(stream);
     }
 }

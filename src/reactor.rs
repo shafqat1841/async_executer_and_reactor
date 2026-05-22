@@ -1,9 +1,9 @@
 // reactor.rs
-use mio::{Events, Poll, Token, Interest};
+use mio::{Events, Interest, Poll, Token};
+use std::io;
 use std::sync::mpsc::Receiver;
 use std::task::Waker;
 use std::time::Duration;
-use std::io;
 
 pub struct Reactor {
     pub poll: Poll,
@@ -13,6 +13,17 @@ pub struct Reactor {
 }
 
 impl Reactor {
+    pub fn new(listener: mio::net::TcpListener, waker_receiver: Receiver<Waker>) -> Self {
+        let poll = Poll::new().unwrap();
+        let events = Events::with_capacity(1024);
+
+        Reactor {
+            poll,
+            events,
+            listener,
+            waker_receiver,
+        }
+    }
     pub fn tick(&mut self) -> bool {
         println!("--- Reactor Tick: OS epoll blocking for real events ---");
 
@@ -23,14 +34,15 @@ impl Reactor {
 
         if has_waker {
             let _ = self.poll.registry().deregister(&mut self.listener);
-            let _ = self.poll.registry().register(
-                &mut self.listener,
-                Token(0),
-                Interest::READABLE,
-            );
+            let _ = self
+                .poll
+                .registry()
+                .register(&mut self.listener, Token(0), Interest::READABLE);
         }
 
-        self.poll.poll(&mut self.events, Some(Duration::from_secs(30))).unwrap();
+        self.poll
+            .poll(&mut self.events, Some(Duration::from_secs(30)))
+            .unwrap();
 
         let mut data_ready = false;
         for event in self.events.iter() {
@@ -39,7 +51,7 @@ impl Reactor {
                 data_ready = true;
             }
         }
-        
+
         data_ready
     }
 

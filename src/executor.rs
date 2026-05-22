@@ -11,6 +11,14 @@ pub struct Executor {
 }
 
 impl Executor {
+    pub fn new() -> Self {
+        Executor { tasks: Vec::new() }
+    }
+
+    pub fn spawn(&mut self, task: Task) {
+        self.tasks.push(task);
+    }
+
     pub fn run(&mut self, reactor: &mut Reactor) {
         let waker = dummy_waker();
         let mut cx = Context::from_waker(&waker);
@@ -18,7 +26,7 @@ impl Executor {
         while !self.tasks.is_empty() {
             self.tasks.retain_mut(|task| {
                 match task.as_mut().poll(&mut cx) {
-                    Poll::Pending => true, // Keep waiting
+                    Poll::Pending => true,   // Keep waiting
                     Poll::Ready(_) => false, // Remove completed task
                 }
             });
@@ -39,4 +47,9 @@ impl Executor {
 fn dummy_waker() -> Waker {
     unsafe { Waker::from_raw(RawWaker::new(std::ptr::null(), &VTABLE)) }
 }
-const VTABLE: RawWakerVTable = RawWakerVTable::new(|_| RawWaker::new(std::ptr::null(), &VTABLE), |_| {}, |_| {}, |_| {});
+const VTABLE: RawWakerVTable = RawWakerVTable::new(
+    |_| RawWaker::new(std::ptr::null(), &VTABLE),
+    |_| {},
+    |_| {},
+    |_| {},
+);
