@@ -7,7 +7,6 @@ use std::sync::mpsc::Sender;
 use std::task::{Context, Poll};
 
 pub struct AcceptConnection {
-    // A raw pointer pointing directly back to our single Reactor instance
     pub reactor_ptr: *const Reactor,
     pub reactor_sender: Sender<std::task::Waker>,
 }
@@ -18,7 +17,6 @@ impl Future for AcceptConnection {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         println!("--- Future: Attempting to accept socket connection... ---");
 
-        // Dereference the pointer safely to execute the accept action
         let reactor = unsafe { &*self.reactor_ptr };
 
         match reactor.accept_stream() {

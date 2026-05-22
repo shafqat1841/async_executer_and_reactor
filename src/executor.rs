@@ -32,7 +32,6 @@ impl Executor {
             });
 
             if !self.tasks.is_empty() {
-                // If a network request actually lands, the reactor wakes up and returns true
                 let is_ready = reactor.tick();
                 if is_ready {
                     // Force another execution round
