@@ -4,7 +4,7 @@ mod my_tcp_listener;
 mod reactor;
 
 use std::{
-    sync::{Arc, Mutex, mpsc::{self, Sender}},
+    sync::{Arc, Mutex, mpsc::{self}},
     task::Waker,
 };
 
@@ -12,7 +12,6 @@ pub use crate::my_runtime::{my_tcp_listener::MyTcpListener, reactor::Reactor};
 use crate::{my_runtime::executor::Executor, types::Task};
 
 pub struct MyRuntime {
-    reactor_sender: Sender<Waker>,
     reactor: Reactor,
     executor: Executor,
     listener: MyTcpListener,
@@ -32,7 +31,6 @@ impl MyRuntime {
 
         MyRuntime {
             reactor,
-            reactor_sender,
             executor,
             listener,
         }
