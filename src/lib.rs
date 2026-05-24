@@ -1,30 +1,23 @@
 // lib.rs
-mod executor;
+mod my_runtime;
 mod process_data_state;
-mod reactor;
+mod types;
 
 use crate::{
-    executor::{Executor, Task},
+    my_runtime::{MyRuntime, MyTcpListener},
     process_data_state::process_data,
-    reactor::Reactor,
+    types::Task,
 };
-use std::{sync::mpsc, task::Waker};
 
 pub fn run() {
-    let addr = "127.0.0.1:8080".parse().unwrap();
-    let listener = mio::net::TcpListener::bind(addr).unwrap();
+    let mut runtime = MyRuntime::new();
 
-    let (tx, rx) = mpsc::channel::<Waker>();
+    let my_tcp_listener: MyTcpListener = runtime.get_tcp_listener_mut();
 
-    let mut reactor = Reactor::new(listener, rx);
-
-    let reactor_ptr: *const Reactor = &reactor;
-
-    let future_instance = process_data(reactor_ptr, tx);
+    let future_instance = process_data(my_tcp_listener);
     let task: Task = Box::pin(future_instance);
 
-    let mut executor = Executor::new();
-    executor.spawn(task);
+    runtime.spawn(task);
 
-    executor.run(&mut reactor);
+    runtime.run();
 }
