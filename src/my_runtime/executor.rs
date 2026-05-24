@@ -1,5 +1,3 @@
-// executor.rs
-// use crate::reactor::Reactor;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
@@ -21,7 +19,7 @@ impl Executor {
         self.tasks.push(task);
     }
 
-    pub fn run(&mut self, reactor: &mut Reactor, listener: &mut MyTcpListener) {
+    pub fn run(&mut self, reactor: &mut Reactor,listener: &mut MyTcpListener) {
         let waker = dummy_waker();
         let mut cx = Context::from_waker(&waker);
 
@@ -36,7 +34,6 @@ impl Executor {
             if !self.tasks.is_empty() {
                 let is_ready = reactor.tick(listener);
                 if is_ready {
-                    // Force another execution round
                     continue;
                 }
             }

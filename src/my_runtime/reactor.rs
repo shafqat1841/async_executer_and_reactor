@@ -1,6 +1,5 @@
-// reactor.rs
+// my_runtime/reactor.rs
 use mio::{Events, Interest, Poll, Token};
-use std::io;
 use std::sync::mpsc::Receiver;
 use std::task::Waker;
 use std::time::Duration;
@@ -24,6 +23,7 @@ impl Reactor {
             waker_receiver,
         }
     }
+    
     pub fn tick(&mut self, listener: &mut MyTcpListener) -> bool {
         println!("--- Reactor Tick: OS epoll blocking for real events ---");
 
@@ -32,13 +32,12 @@ impl Reactor {
             has_waker = true;
         }
 
-        if has_waker {
-            let _ = self.poll.registry().deregister(&mut listener.listener);
-            let _ = self
-                .poll
-                .registry()
-                .register(&mut listener.listener, Token(0), Interest::READABLE);
-        }
+if has_waker {
+    if let Ok(mut guard) = listener.listener.lock() {
+        let _ = self.poll.registry().deregister(&mut *guard);
+        let _ = self.poll.registry().register(&mut *guard, Token(0), Interest::READABLE);
+    }
+}
 
         self.poll
             .poll(&mut self.events, Some(Duration::from_secs(30)))
@@ -53,10 +52,5 @@ impl Reactor {
         }
 
         data_ready
-    }
-
-    // Add this helper method so the future can securely borrow the socket
-    pub fn accept_stream(&self, listener: MyTcpListener) -> io::Result<(mio::net::TcpStream, std::net::SocketAddr)> {
-        listener.listener.accept()
     }
 }

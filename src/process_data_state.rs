@@ -15,8 +15,6 @@ impl Future for AcceptConnection {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         println!("--- Future: Attempting to accept socket connection... ---");
 
-        // let reactor = unsafe { &*self.reactor_ptr };
-
         match self.my_tcp_listener.accept() {
             Ok((stream, _addr)) => Poll::Ready(Ok(stream)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {

@@ -1,42 +1,45 @@
+// my_runtime/mod.rs
 mod executor;
 mod my_tcp_listener;
-// mod process_data_state;
 mod reactor;
 
 use std::{
-    sync::mpsc::{self, Sender},
-    task::{self, Waker},
+    sync::{Arc, Mutex, mpsc::{self, Sender}},
+    task::Waker,
 };
 
 pub use crate::my_runtime::{my_tcp_listener::MyTcpListener, reactor::Reactor};
 use crate::{my_runtime::executor::Executor, types::Task};
 
 pub struct MyRuntime {
-    // pub tcp_listener: MyTcpListener,
     reactor_sender: Sender<Waker>,
     reactor: Reactor,
     executor: Executor,
+    listener: MyTcpListener,
 }
 
 impl MyRuntime {
     pub fn new() -> Self {
-        let (reactor_sender, reactor_reciver) = mpsc::channel::<Waker>();
-
-        let reactor = Reactor::new(reactor_reciver);
-
+        let (reactor_sender, reactor_receiver) = mpsc::channel::<Waker>();
+        let reactor = Reactor::new(reactor_receiver);
         let executor = Executor::new();
+
+        let addr = "127.0.0.1:8080".parse().unwrap();
+        let raw_listener = mio::net::TcpListener::bind(addr).unwrap();
+        let shared_listener = Arc::new(Mutex::new(raw_listener));
+
+        let listener = MyTcpListener::new(shared_listener, reactor_sender.clone());
 
         MyRuntime {
             reactor,
             reactor_sender,
             executor,
+            listener,
         }
     }
 
     pub fn get_tcp_listener_mut(&mut self) -> MyTcpListener {
-        let reactor_sender = self.reactor_sender.clone();
-        let tcp_listener: MyTcpListener = MyTcpListener::new(reactor_sender);
-        tcp_listener
+        self.listener.clone()
     }
 
     pub fn spawn(&mut self, task: Task) {
@@ -44,8 +47,6 @@ impl MyRuntime {
     }
 
     pub fn run(&mut self) {
-        let mut tcp_listener: MyTcpListener = self.get_tcp_listener_mut();
-        self.executor
-            .run(&mut self.reactor, &mut tcp_listener);
+        self.executor.run(&mut self.reactor, &mut self.listener);
     }
 }
