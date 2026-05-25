@@ -4,7 +4,10 @@ mod my_tcp_listener;
 mod reactor;
 
 use std::{
-    sync::{Arc, Mutex, mpsc::{self}},
+    sync::{
+        Arc, Mutex,
+        mpsc::{self, Sender},
+    },
     task::Waker,
 };
 
@@ -23,17 +26,22 @@ impl MyRuntime {
         let reactor = Reactor::new(reactor_receiver);
         let executor = Executor::new();
 
-        let addr = "127.0.0.1:8080".parse().unwrap();
-        let raw_listener = mio::net::TcpListener::bind(addr).unwrap();
-        let shared_listener = Arc::new(Mutex::new(raw_listener));
-
-        let listener = MyTcpListener::new(shared_listener, reactor_sender.clone());
+        let listener = Self::make_shared_listener(reactor_sender.clone());
 
         MyRuntime {
             reactor,
             executor,
             listener,
         }
+    }
+
+    fn make_shared_listener(reactor_sender: Sender<Waker>) -> MyTcpListener {
+        let addr = "127.0.0.1:8080".parse().unwrap();
+        let raw_listener = mio::net::TcpListener::bind(addr).unwrap();
+        let shared_listener = Arc::new(Mutex::new(raw_listener));
+
+        let listener: MyTcpListener = MyTcpListener::new(shared_listener, reactor_sender.clone());
+        listener
     }
 
     pub fn get_tcp_listener_mut(&mut self) -> MyTcpListener {
