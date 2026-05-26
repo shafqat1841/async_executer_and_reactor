@@ -24,7 +24,7 @@ impl Reactor {
         }
     }
 
-    pub fn tick(&mut self, listener: &mut MyTcpListener) -> bool {
+    pub fn tick(&mut self, my_tcp_listener: &mut MyTcpListener) -> bool {
         println!("--- Reactor Tick: OS epoll blocking for real events ---");
 
         let mut has_waker = false;
@@ -33,12 +33,12 @@ impl Reactor {
         }
 
         if has_waker {
-            if let Ok(mut guard) = listener.listener.lock() {
-                let _ = self.poll.registry().deregister(&mut *guard);
+            if let Ok(mut listener) = my_tcp_listener.listener.lock() {
+                let _ = self.poll.registry().deregister(&mut *listener);
                 let _ = self
                     .poll
                     .registry()
-                    .register(&mut *guard, Token(0), Interest::READABLE);
+                    .register(&mut *listener, Token(0), Interest::READABLE);
             }
         }
 
