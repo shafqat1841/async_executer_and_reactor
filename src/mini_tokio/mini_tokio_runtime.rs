@@ -29,6 +29,7 @@ impl MiniTokio {
 
         MiniTokio { scheduled, sender }
     }
+
     pub fn spawn<F>(&self, future: F)
     where
         F: Future<Output = ()> + Send + 'static,
@@ -42,6 +43,7 @@ impl MiniTokio {
 
         self.run();
     }
+
     pub fn run(&self) {
         while let Ok(task) = self.scheduled.recv() {
             let waker = task::waker(task.clone());
