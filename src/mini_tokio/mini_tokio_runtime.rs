@@ -37,6 +37,8 @@ impl MiniTokio {
         });
 
         let _ = self.sender.send(task);
+
+        self.run();
     }
     pub fn run(&self) {
         while let Ok(task) = self.scheduled.recv() {

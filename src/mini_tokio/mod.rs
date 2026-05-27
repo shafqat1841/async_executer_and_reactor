@@ -15,5 +15,4 @@ pub fn main_run() {
         println!("hello");
         std::process::exit(0);
     });
-    mini_tokio.run();
 }
