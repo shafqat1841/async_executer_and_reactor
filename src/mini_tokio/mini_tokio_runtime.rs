@@ -7,6 +7,7 @@ use std::task::Context;
 
 pub struct Task {
     pub future: Mutex<BoxFuture<'static, ()>>,
+
     pub executor: mpsc::Sender<Arc<Task>>,
 }
 
@@ -18,6 +19,7 @@ impl ArcWake for Task {
 
 pub struct MiniTokio {
     scheduled: mpsc::Receiver<Arc<Task>>,
+
     sender: mpsc::Sender<Arc<Task>>,
 }
 
@@ -43,8 +45,11 @@ impl MiniTokio {
     pub fn run(&self) {
         while let Ok(task) = self.scheduled.recv() {
             let waker = task::waker(task.clone());
+
             let mut cx = Context::from_waker(&waker);
+
             let mut future = task.future.try_lock().unwrap();
+
             let _ = future.as_mut().poll(&mut cx);
         }
     }
