@@ -1,11 +1,9 @@
 use std::future::Future;
 use std::sync::{Arc, Mutex, mpsc};
 
-use futures::future::BoxFuture;
-use futures::task::{self, ArcWake};
+use futures::task::{self};
 use std::task::{Context, Poll};
 
-use crate::my_runtime::my_reactor::Reactor;
 use crate::my_runtime::my_task::MyTask;
 
 pub struct MyRuntime2 {
@@ -13,16 +11,13 @@ pub struct MyRuntime2 {
 
     sender: mpsc::Sender<Arc<MyTask>>,
 
-     reactor: Arc<Mutex<Reactor>>
 }
 
 impl MyRuntime2 {
     pub fn new() -> MyRuntime2 {
         let (sender, scheduled) = mpsc::channel();
 
-        let reactor: Arc<Mutex<Reactor>> = Arc::new(Mutex::new(Reactor::new()));
-
-        MyRuntime2 { scheduled, sender, reactor }
+        MyRuntime2 { scheduled, sender }
     }
 
     pub fn spawn<F>(&self, future: F)

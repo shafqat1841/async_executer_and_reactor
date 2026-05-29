@@ -1,8 +1,6 @@
 use mio::net::TcpListener;
-// my_runtime/reactor.rs
 use mio::{Events, Interest, Poll, Token};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 pub struct Reactor {
     pub poll: Poll,
