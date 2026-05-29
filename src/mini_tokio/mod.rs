@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use mini_tokio_runtime::MiniTokio;
 use crate::mini_tokio::process_data::delay;
-pub fn main_run() {
+pub fn main_run0() {
     let mini_tokio = MiniTokio::new();
     mini_tokio.spawn(async {
         delay(Duration::from_millis(500)).await;

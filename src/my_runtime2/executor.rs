@@ -1,83 +1,53 @@
 use std::future::Future;
-use std::sync::{Arc, Mutex, mpsc};
+use std::pin::Pin;
 use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
-use std::time::{Duration};
-use std::{thread};
 
-use futures::future::BoxFuture;
-// use futures::lock::Mutex;
-use futures::task::{self, ArcWake};
+use crate::my_runtime::{MyTcpListener, Reactor};
 
-use crate::my_runtime::reactor::Reactor;
-
-// pub type Task = Pin<Box<dyn Future<Output = ()>>>;
-
-pub struct Task {
-    pub future: Mutex<BoxFuture<'static, ()>>,
-
-    pub executor: mpsc::Sender<Arc<Task>>,
-}
-
-impl Task {
-    pub fn new<F>(future: F, executor: mpsc::Sender<Arc<Task>>) -> Self
-    where
-        F: Future<Output = ()> + Send + 'static,
-    {
-        Task {
-            future: Mutex::new(Box::pin(future)),
-            executor, // Placeholder, will be set properly in MyRuntime
-        }
-    }
-}
-
-impl ArcWake for Task {
-    fn wake_by_ref(arc_self: &Arc<Self>) {
-        let _ = arc_self.executor.send(arc_self.clone());
-    }
-}
+pub type Task = Pin<Box<dyn Future<Output = ()>>>;
 
 pub struct Executor {
-    reactor: Reactor,
-    has_waker: bool,
+    pub tasks: Vec<Task>,
 }
 
 impl Executor {
-    pub fn new(reactor: Reactor) -> Self {
-        Executor {
-            reactor,
-            has_waker: false,
-        }
+    pub fn new() -> Self {
+        Executor { tasks: Vec::new() }
     }
 
-    pub fn run(&mut self) -> () {
-        while let Ok(task) = self.reactor.waker_receiver.recv() {
-            let waker = task::waker(task.clone());
+    pub fn spawn(&mut self, task: Task) {
+        self.tasks.push(task);
+    }
 
-            let mut cx = Context::from_waker(&waker);
+    pub fn run(&mut self, reactor: &mut Reactor, listener: &mut MyTcpListener) {
+        let waker = dummy_waker();
+        let mut cx = Context::from_waker(&waker);
 
-            let mut future = task.future.try_lock().unwrap();
-
-            match future.as_mut().poll(&mut cx) {
-                Poll::Pending => {
-                    println!("Executor: Task is still pending, will check again later.");
-                    if !self.has_waker {
-                        let waker = Arc::new(Mutex::new(cx.waker().clone()));
-
-                        self.has_waker = true;
-
-                        thread::spawn(move || {
-                            thread::sleep(Duration::from_secs(30));
-
-                            let waker = waker.lock().unwrap();
-
-                            waker.wake_by_ref();
-                        });
-                    }
+        while !self.tasks.is_empty() {
+            self.tasks.retain_mut(|task| {
+                match task.as_mut().poll(&mut cx) {
+                    Poll::Pending => true,   // Keep waiting
+                    Poll::Ready(_) => false, // Remove completed task
                 }
-                Poll::Ready(_) => {
-                    println!("Executor: Task completed, removing from queue.");
+            });
+
+            if !self.tasks.is_empty() {
+                let is_ready = reactor.tick(listener);
+                if is_ready {
+                    continue;
                 }
             }
         }
+        println!("Executor: All tasks complete.");
     }
 }
+
+fn dummy_waker() -> Waker {
+    unsafe { Waker::from_raw(RawWaker::new(std::ptr::null(), &VTABLE)) }
+}
+const VTABLE: RawWakerVTable = RawWakerVTable::new(
+    |_| RawWaker::new(std::ptr::null(), &VTABLE),
+    |_| {},
+    |_| {},
+    |_| {},
+);

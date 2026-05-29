@@ -3,21 +3,26 @@ use std::sync::{Arc, Mutex, mpsc};
 
 use futures::future::BoxFuture;
 use futures::task::{self, ArcWake};
-use std::task::Context;
+use std::task::{Context, Poll};
 
+use crate::my_runtime::my_reactor::Reactor;
 use crate::my_runtime::my_task::MyTask;
 
 pub struct MyRuntime2 {
     scheduled: mpsc::Receiver<Arc<MyTask>>,
 
     sender: mpsc::Sender<Arc<MyTask>>,
+
+     reactor: Arc<Mutex<Reactor>>
 }
 
 impl MyRuntime2 {
     pub fn new() -> MyRuntime2 {
         let (sender, scheduled) = mpsc::channel();
 
-        MyRuntime2 { scheduled, sender }
+        let reactor: Arc<Mutex<Reactor>> = Arc::new(Mutex::new(Reactor::new()));
+
+        MyRuntime2 { scheduled, sender, reactor }
     }
 
     pub fn spawn<F>(&self, future: F)
@@ -34,7 +39,10 @@ impl MyRuntime2 {
         self.run();
     }
 
-    pub fn run(&self) {
+    pub fn run(&self) -> Option<()> {
+
+        let mut result = None;
+
         while let Ok(task) = self.scheduled.recv() {
             let waker = task::waker(task.clone());
 
@@ -42,7 +50,22 @@ impl MyRuntime2 {
 
             let mut future = task.future.try_lock().unwrap();
 
-            let _ = future.as_mut().poll(&mut cx);
+            let res: Poll<()> = future.as_mut().poll(&mut cx);
+
+            match res {
+                Poll::Pending => {
+                    println!("Task is still pending, will check again later.");
+                }
+                Poll::Ready(res) => {
+                    // println!("file: my_runtime2.rs - line 57 - Poll::Ready - res : {:?} ", res);
+                    // println!("Task completed!");
+                    result = Some(res);
+                    break;
+
+                }
+            }
         }
+
+        result
     }
 }

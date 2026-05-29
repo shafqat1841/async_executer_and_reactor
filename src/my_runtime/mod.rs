@@ -3,8 +3,9 @@ use crate::my_runtime::{my_runtime2::MyRuntime2, my_tcp_listener::MyTcpListener}
 mod my_runtime2;
 mod my_task;
 mod my_tcp_listener;
+mod my_reactor;
 
-pub fn main_run2() {
+pub fn main_run() {
     let runtime = MyRuntime2::new();
 
     let futue = async {
@@ -15,11 +16,11 @@ pub fn main_run2() {
         let stream = listener.await;
 
         match stream {
-            Ok(_stream) => print!("Client connected! Processing HTTP payload..."),
+            Ok(stream) => println!("Client connected! stream: {:?}", stream),
             Err(e) => println!("Error accepting connection: {}", e),
         }
     };
 
     runtime.spawn(futue);
-    print!("main_run2");
+    println!("main_run2");
 }

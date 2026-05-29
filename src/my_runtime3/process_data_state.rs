@@ -5,12 +5,14 @@ use std::task::{Context, Poll};
 
 use crate::my_runtime::MyTcpListener;
 
+pub type ProcessDataRes = io::Result<mio::net::TcpStream>;
+
 pub struct AcceptConnection {
     pub my_tcp_listener: MyTcpListener,
 }
 
 impl Future for AcceptConnection {
-    type Output = io::Result<mio::net::TcpStream>;
+    type Output = ProcessDataRes;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         println!("--- Future: Attempting to accept socket connection... ---");
@@ -19,8 +21,8 @@ impl Future for AcceptConnection {
             Ok((stream, _addr)) => Poll::Ready(Ok(stream)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 println!("Future: No requests currently in queue. Sending waker to Reactor...");
-                let waker: std::task::Waker = cx.waker().clone();
-                let _ = self.my_tcp_listener.reactor_send(waker);
+                // let waker: std::task::Waker = cx.waker().clone();
+                // let _ = self.my_tcp_listener.reactor_send(waker);
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(e)),
@@ -28,7 +30,7 @@ impl Future for AcceptConnection {
     }
 }
 
-pub async fn process_data(my_tcp_listener: MyTcpListener) {
+pub async fn process_data(my_tcp_listener: MyTcpListener) -> () {
     println!("Step 1: HTTP Backend Active. Awaiting browser request...");
 
     let connection_future = AcceptConnection { my_tcp_listener };

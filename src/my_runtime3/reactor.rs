@@ -1,19 +1,21 @@
 // my_runtime/reactor.rs
 use mio::{Events, Interest, Poll, Token};
+use std::sync::Arc;
 use std::sync::mpsc::Receiver;
 use std::task::Waker;
 use std::time::Duration;
 
+use crate::my_runtime::executor::Task;
 use crate::my_runtime::my_tcp_listener::MyTcpListener;
 
 pub struct Reactor {
     pub poll: Poll,
     pub events: Events,
-    pub waker_receiver: Receiver<Waker>,
+    pub waker_receiver: Receiver<Arc<Task>>,
 }
 
 impl Reactor {
-    pub fn new(waker_receiver: Receiver<Waker>) -> Self {
+    pub fn new(waker_receiver: Receiver<Arc<Task>>) -> Self {
         let poll = Poll::new().unwrap();
         let events = Events::with_capacity(1024);
 
@@ -24,7 +26,7 @@ impl Reactor {
         }
     }
 
-    pub fn tick(&mut self, listener: &mut MyTcpListener) -> bool {
+    pub fn tick(&mut self, my_tcp_listener: &mut MyTcpListener) -> bool {
         println!("--- Reactor Tick: OS epoll blocking for real events ---");
 
         let mut has_waker = false;
@@ -33,12 +35,12 @@ impl Reactor {
         }
 
         if has_waker {
-            if let Ok(mut guard) = listener.listener.lock() {
-                let _ = self.poll.registry().deregister(&mut *guard);
+            if let Ok(mut listener) = my_tcp_listener.listener.lock() {
+                let _ = self.poll.registry().deregister(&mut *listener);
                 let _ = self
                     .poll
                     .registry()
-                    .register(&mut *guard, Token(0), Interest::READABLE);
+                    .register(&mut *listener, Token(0), Interest::READABLE);
             }
         }
 
