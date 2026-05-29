@@ -1,9 +1,8 @@
 use std::{
-    io, result,
+    io,
     sync::{Arc, Mutex},
     task::{Context, Poll},
     thread,
-    time::Duration,
 };
 
 use mio::net::{TcpListener, TcpStream};
@@ -37,9 +36,7 @@ impl Future for MyTcpListener {
         let listener_clone = self.listener.clone();
         let listener_lock = listener_clone.lock().unwrap();
         match listener_lock.accept() {
-            Ok((stream, _addr)) => {
-                Poll::Ready(Ok(stream))
-            },
+            Ok((stream, _addr)) => Poll::Ready(Ok(stream)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 println!("Executor: Task is still pending, will check again later.");
                 if !self.has_waker {
@@ -60,7 +57,7 @@ impl Future for MyTcpListener {
                             let waker = waker.lock().unwrap();
 
                             waker.wake_by_ref();
-                        } 
+                        }
                     });
                 }
                 Poll::Pending
