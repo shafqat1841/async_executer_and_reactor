@@ -1,9 +1,11 @@
 use std::future::Future;
 use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
 
 use futures::task::{self};
 use std::task::{Context, Poll};
 
+use crate::my_runtime4::my_reactor::{Reactor, Registration};
 use crate::my_runtime4::my_task::MyTask;
 
 pub struct MyRuntime4 {
@@ -11,13 +13,25 @@ pub struct MyRuntime4 {
 
     sender: mpsc::Sender<Arc<MyTask>>,
 
+    pub reactor_sender: mpsc::Sender<Registration>,
 }
 
 impl MyRuntime4 {
     pub fn new() -> MyRuntime4 {
         let (sender, scheduled) = mpsc::channel();
 
-        MyRuntime4 { scheduled, sender }
+        let (reactor_sender, reactor_receiver) = mpsc::channel::<Registration>();
+
+        thread::spawn(move || {
+            let mut reactor = Reactor::new(reactor_receiver);
+            reactor.run_loop();
+        });
+
+        MyRuntime4 {
+            scheduled,
+            sender,
+            reactor_sender,
+        }
     }
 
     pub fn spawn<F>(&self, future: F)
@@ -34,33 +48,13 @@ impl MyRuntime4 {
         self.run();
     }
 
-    pub fn run(&self) -> Option<()> {
-
-        let mut result = None;
-
+    pub fn run(&self) {
         while let Ok(task) = self.scheduled.recv() {
             let waker = task::waker(task.clone());
-
             let mut cx = Context::from_waker(&waker);
-
             let mut future = task.future.try_lock().unwrap();
 
-            let res: Poll<()> = future.as_mut().poll(&mut cx);
-
-            match res {
-                Poll::Pending => {
-                    println!("Task is still pending, will check again later.");
-                }
-                Poll::Ready(res) => {
-                    // println!("file: my_runtime2.rs - line 57 - Poll::Ready - res : {:?} ", res);
-                    // println!("Task completed!");
-                    result = Some(res);
-                    break;
-
-                }
-            }
+            let _ = future.as_mut().poll(&mut cx);
         }
-
-        result
     }
 }
