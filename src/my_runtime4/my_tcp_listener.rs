@@ -47,8 +47,6 @@ impl Future for MyTcpListener {
                     let mut listener_clone2 = listener_clone.clone();
 
                     thread::spawn(move || {
-                        // thread::sleep(Duration::from_secs(30));
-
                         let mut reactor = Reactor::new();
 
                         let data_ready = reactor.check_tcp_resource(&mut listener_clone2);
