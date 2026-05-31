@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 
 use futures::task::{self};
-use std::task::{Context, Poll};
+use std::task::Context;
 
 use crate::my_runtime4::my_reactor::{Reactor, Registration};
 use crate::my_runtime4::my_task::MyTask;

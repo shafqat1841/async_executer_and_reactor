@@ -2,12 +2,14 @@ use std::{
     io,
     sync::{Arc, Mutex, mpsc},
     task::{Context, Poll},
-    thread,
 };
 
-use mio::{Token, net::{TcpListener, TcpStream}};
+use mio::{
+    Token,
+    net::{TcpListener, TcpStream},
+};
 
-use crate::my_runtime4::my_reactor::{Reactor, Registration};
+use crate::my_runtime4::my_reactor::Registration;
 
 pub struct MyTcpListener {
     // pub listener: TcpListener,
@@ -39,7 +41,7 @@ impl Future for MyTcpListener {
     fn poll(mut self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let listener_clone = self.listener.clone();
         let listener_lock = listener_clone.lock().unwrap();
-        
+
         match listener_lock.accept() {
             Ok((stream, _addr)) => Poll::Ready(Ok(stream)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
@@ -47,7 +49,7 @@ impl Future for MyTcpListener {
                     println!("Future: Socket blocked! Forwarding waker to the global Reactor...");
 
                     self.token += 1; // Increment token for the next listener
-                    
+
                     let registration = Registration {
                         listener: listener_clone.clone(),
                         token: Token(self.token),
