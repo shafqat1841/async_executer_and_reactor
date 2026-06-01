@@ -17,7 +17,7 @@ pub struct MyTcpListener {
     listener: Arc<Mutex<TcpListener>>,
     pub has_waker: bool,
     reactor_sender: mpsc::Sender<Registration>,
-    mio_waker: Arc<MioWaker>, // Listener holds a reference clone of the reactor's waker
+    mio_waker: Arc<MioWaker>,
     token: usize,
 }
 
@@ -35,7 +35,7 @@ impl MyTcpListener {
             has_waker: false,
             reactor_sender,
             mio_waker,
-            token: 0, // Reserve token 0 for the Waker, start socket tokens from 1!
+            token: 0,
         }
     }
 }
@@ -53,7 +53,6 @@ impl Future for MyTcpListener {
                 if !self.has_waker {
                     println!("Future: Socket blocked! Forwarding waker to the global Reactor...");
 
-                    // Incremental unique ID (offset by 1 to skip WAKER_TOKEN at 0)
                     self.token += 1;
 
                     let registration = Registration {
@@ -62,11 +61,8 @@ impl Future for MyTcpListener {
                         waker: cx.waker().clone(),
                     };
 
-                    // 1. Send the registration to the channel queue
                     let _ = self.reactor_sender.send(registration);
 
-                    // 2. CRITICAL: Break the OS poll lock!
-                    // This kicks `self.poll.poll(..., None)` out of its deep sleep immediately.
                     self.mio_waker.wake().unwrap();
 
                     self.has_waker = true;

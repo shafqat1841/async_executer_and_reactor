@@ -25,16 +25,12 @@ impl MyRuntime4 {
         let (sender, scheduled) = mpsc::channel();
         let (reactor_sender, reactor_receiver) = mpsc::channel::<Registration>();
 
-        // We instantiate the Reactor temporarily on the main thread to bind the OS poll context
         let mut reactor = Reactor::new(reactor_receiver);
 
-        // Generate the waker from the reactor's poll registry before spawning the thread
         let mio_waker = Arc::new(MioWaker::new(reactor.poll.registry(), WAKER_TOKEN).unwrap());
         let mio_waker_clone = mio_waker.clone();
 
         thread::spawn(move || {
-            // Note: Remove the MioWaker::new creation inside `run_loop` if you create it here.
-            // Adjust reactor.run_loop() to expect the token processing or handle it cleanly.
             reactor.run_loop();
         });
 
