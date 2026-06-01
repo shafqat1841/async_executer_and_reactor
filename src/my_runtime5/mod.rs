@@ -22,8 +22,16 @@ pub fn main_run() {
             let stream = (&mut listener).await; // Use &mut to preserve listener state
 
             match stream {
-                Ok(stream) => {
-                    dbg!(stream);
+                Ok(mut stream) => {
+                    use std::io::Read;
+                    let mut buffer = [0; 1024];
+                    if let Ok(bytes_read) = stream.read(&mut buffer) {
+                        let request_str = String::from_utf8_lossy(&buffer[..bytes_read]);
+                        println!("file: mod.rs - line 32 - ifletSome - request_str : {} ", request_str);
+                        // if let Some(first_line) = request_str.lines().next() {
+                        //     println!("Browser requested: {}", first_line);
+                        // }
+                    }
                 }
                 Err(e) => {
                     dbg!(e);
