@@ -15,10 +15,8 @@ pub fn main_run() {
 
         let addr = "127.0.0.1:8080".parse().unwrap();
         let mut listener = MyTcpListener::new(addr, reactor_sender.clone());
-       // 2. Loop infinitely to accept multiple incoming clients
         loop {
-            // Reset the internal waker state so it can re-register on the next block
-            listener.has_waker = false; 
+            listener.has_waker = false;
 
             println!("\n--- Awaiting next connection request... ---");
             let stream = (&mut listener).await; // Use &mut to preserve listener state
@@ -26,8 +24,6 @@ pub fn main_run() {
             match stream {
                 Ok(stream) => {
                     println!("Client connected! stream: {:?}", stream);
-                    // In a production server, you would use `runtime.spawn` here 
-                    // to offload processing the stream onto a separate async task!
                 }
                 Err(e) => println!("Error accepting connection: {}", e),
             }
