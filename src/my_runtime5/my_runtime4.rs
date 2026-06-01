@@ -8,7 +8,7 @@ use std::task::Context;
 use crate::my_runtime5::my_reactor::{Reactor, Registration, WAKER_TOKEN};
 use crate::my_runtime5::my_task::MyTask;
 
-use mio::{Token, Waker as MioWaker};
+use mio::Waker as MioWaker;
 
 pub struct MyRuntime4 {
     scheduled: mpsc::Receiver<Arc<MyTask>>,
