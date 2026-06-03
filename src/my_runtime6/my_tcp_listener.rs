@@ -15,6 +15,7 @@ use crate::my_runtime6::my_reactor::Registration;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+static NEXT_TOKEN: AtomicUsize = AtomicUsize::new(0);
 pub struct MyTcpListener {
     listener: Arc<Mutex<TcpListener>>,
     pub has_waker: bool,
@@ -32,9 +33,8 @@ impl MyTcpListener {
         let raw_listener = TcpListener::bind(addr).unwrap();
         let listener = Arc::new(Mutex::new(raw_listener));
 
-        static NEXT_TOKEN: AtomicUsize = AtomicUsize::new(1);
 
-        let token = Token(NEXT_TOKEN.load(Ordering::Relaxed));
+        let token = Token(NEXT_TOKEN.fetch_add(1, Ordering::Relaxed));
 
         MyTcpListener {
             listener,
