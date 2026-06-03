@@ -13,6 +13,8 @@ use mio::Waker as MioWaker;
 
 use crate::my_runtime6::my_reactor::Registration;
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 pub struct MyTcpListener {
     listener: Arc<Mutex<TcpListener>>,
     pub has_waker: bool,
@@ -30,12 +32,16 @@ impl MyTcpListener {
         let raw_listener = TcpListener::bind(addr).unwrap();
         let listener = Arc::new(Mutex::new(raw_listener));
 
+        static NEXT_TOKEN: AtomicUsize = AtomicUsize::new(1);
+
+        let token = Token(NEXT_TOKEN.load(Ordering::Relaxed));
+
         MyTcpListener {
             listener,
             has_waker: false,
             reactor_sender,
             mio_waker,
-            token: Token(1),
+            token,
         }
     }
 }
