@@ -16,10 +16,9 @@ pub fn main_run() {
         let addr = "127.0.0.1:8080".parse().unwrap();
         let mut listener = MyTcpListener::new(addr, reactor_sender.clone(), mio_waker.clone());
         loop {
-            listener.has_waker = false;
-
             println!("--- Awaiting next connection request... ---");
-            let stream = (&mut listener).await; // Use &mut to preserve listener state
+            // Encapsulation is preserved; state is tracked internally
+            let stream = (&mut listener).await;
 
             match stream {
                 Ok(mut stream) => {
@@ -27,14 +26,11 @@ pub fn main_run() {
                     let mut buffer = [0; 1024];
                     if let Ok(bytes_read) = stream.read(&mut buffer) {
                         let request_str = String::from_utf8_lossy(&buffer[..bytes_read]);
-                        println!("file: mod.rs - line 32 - ifletSome - request_str : {} ", request_str);
-                        // if let Some(first_line) = request_str.lines().next() {
-                        //     println!("Browser requested: {}", first_line);
-                        // }
+                        println!("Request received:\n{}", request_str);
                     }
                 }
                 Err(e) => {
-                    dbg!(e);
+                    eprintln!("Runtime error accepting stream: {:?}", e);
                 }
             }
         }

@@ -50,7 +50,6 @@ impl MyRuntime4 {
             future: Mutex::new(Box::pin(future)),
             executor: self.sender.clone(),
         });
-
         let _ = self.sender.send(task);
 
         self.run();

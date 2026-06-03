@@ -15,10 +15,10 @@ use crate::my_runtime6::my_reactor::Registration;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-static NEXT_TOKEN: AtomicUsize = AtomicUsize::new(0);
+static NEXT_TOKEN: AtomicUsize = AtomicUsize::new(1);
 pub struct MyTcpListener {
     listener: Arc<Mutex<TcpListener>>,
-    pub has_waker: bool,
+    registration_sent: bool, // Renamed for accurate intent
     reactor_sender: mpsc::Sender<Registration>,
     mio_waker: Arc<MioWaker>,
     token: Token,
@@ -33,12 +33,11 @@ impl MyTcpListener {
         let raw_listener = TcpListener::bind(addr).unwrap();
         let listener = Arc::new(Mutex::new(raw_listener));
 
-
         let token = Token(NEXT_TOKEN.fetch_add(1, Ordering::Relaxed));
 
         MyTcpListener {
             listener,
-            has_waker: false,
+            registration_sent: false,
             reactor_sender,
             mio_waker,
             token,
@@ -54,9 +53,13 @@ impl Future for MyTcpListener {
         let listener_lock = listener_clone.lock().unwrap();
 
         match listener_lock.accept() {
-            Ok((stream, _addr)) => Poll::Ready(Ok(stream)),
+            Ok((stream, _addr)) => {
+                self.registration_sent = false;
+                println!("file: my_tcp_listener.rs - line 62 - Ok - stream : {:?} ", stream);
+                Poll::Ready(Ok(stream))
+            }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                if !self.has_waker {
+                if !self.registration_sent {
                     println!("Future: Socket blocked! Forwarding waker to the global Reactor...");
 
                     let registration = Registration {
@@ -69,11 +72,14 @@ impl Future for MyTcpListener {
 
                     self.mio_waker.wake().unwrap();
 
-                    self.has_waker = true;
+                    self.registration_sent = true;
                 }
                 Poll::Pending
             }
-            Err(e) => Poll::Ready(Err(e)),
+            Err(e) => {
+                self.registration_sent = false;
+                Poll::Ready(Err(e))
+            }
         }
     }
 }
