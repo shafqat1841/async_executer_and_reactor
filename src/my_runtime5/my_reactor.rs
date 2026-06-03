@@ -52,17 +52,23 @@ impl Reactor {
             }
 
             if check_registrations {
-                dbg!(check_registrations);
+                // dbg!(check_registrations);
                 while let Ok(reg) = self.registration_receiver.try_recv() {
                     dbg!(reg.token);
                     if let Ok(mut guard) = reg.listener.lock() {
-                        let _ = self.poll.registry().deregister(&mut *guard);
+                        let reregistered = self.poll.registry().reregister(
+                            &mut *guard,
+                            reg.token,
+                            Interest::READABLE,
+                        );
 
-                        let _ = self
-                            .poll
-                            .registry()
-                            .register(&mut *guard, reg.token, Interest::READABLE)
-                            .unwrap();
+                        if reregistered.is_err() {
+                            let _ = self.poll.registry().register(
+                                &mut *guard,
+                                reg.token,
+                                Interest::READABLE,
+                            );
+                        }
 
                         wakers_map.insert(reg.token, reg.waker);
                     }

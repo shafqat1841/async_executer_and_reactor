@@ -18,7 +18,7 @@ pub struct MyTcpListener {
     pub has_waker: bool,
     reactor_sender: mpsc::Sender<Registration>,
     mio_waker: Arc<MioWaker>,
-    token: usize,
+    token: Token,
 }
 
 impl MyTcpListener {
@@ -35,7 +35,7 @@ impl MyTcpListener {
             has_waker: false,
             reactor_sender,
             mio_waker,
-            token: 0,
+            token: Token(1),
         }
     }
 }
@@ -53,11 +53,9 @@ impl Future for MyTcpListener {
                 if !self.has_waker {
                     println!("Future: Socket blocked! Forwarding waker to the global Reactor...");
 
-                    self.token += 1;
-
                     let registration = Registration {
                         listener: listener_clone.clone(),
-                        token: Token(self.token),
+                        token: self.token,
                         waker: cx.waker().clone(),
                     };
 
