@@ -51,8 +51,6 @@ impl MyRuntime4 {
             executor: self.sender.clone(),
         });
         let _ = self.sender.send(task);
-
-        self.run();
     }
 
     pub fn run(&self) {

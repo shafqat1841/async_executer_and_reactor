@@ -50,12 +50,19 @@ impl Future for MyTcpListener {
 
     fn poll(mut self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let listener_clone = self.listener.clone();
-        let listener_lock = listener_clone.lock().unwrap();
 
-        match listener_lock.accept() {
+        let accept_result = {
+            let listener_lock = self.listener.lock().unwrap();
+            listener_lock.accept()
+        };
+
+        match accept_result {
             Ok((stream, _addr)) => {
                 self.registration_sent = false;
-                println!("file: my_tcp_listener.rs - line 62 - Ok - stream : {:?} ", stream);
+                println!(
+                    "file: my_tcp_listener.rs - line 62 - Ok - stream : {:?} ",
+                    stream
+                );
                 Poll::Ready(Ok(stream))
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {

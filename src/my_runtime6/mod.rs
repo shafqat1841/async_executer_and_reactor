@@ -38,4 +38,5 @@ pub fn main_run() {
 
     runtime.spawn(futue);
     dbg!("main_run2");
+    runtime.run();
 }
